@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Arcade Hub + Leaderboard</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+}
+
+h1 { margin: 10px; }
+
+.menu {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+}
+
+button {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #38bdf8;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover { background: #0ea5e9; }
+
+canvas {
+  display: none;
+  margin: 10px auto;
+  background: black;
+}
+
+#panel {
+  margin-top: 10px;
+}
+
+#leaderboard {
+  background: #1e293b;
+  padding: 10px;
+  margin: 10px auto;
+  width: 250px;
+  border-radius: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎮 Arcade + Leaderboard</h1>
+
+<div class="menu">
+<button onclick="setGame('clicker')">Clicker</button>
+<button onclick="setGame('reaction')">Reaction</button>
+<button onclick="setGame('snake')">Snake</button>
+<button onclick="setGame('mole')">Whack Mole</button>
+</div>
+
+<div id="panel"></div>
+
+<div id="leaderboard">
+<h3>🏆 Leaderboard</h3>
+<div id="scores"></div>
+</div>
+
+<canvas id="game" width="400" height="400"></canvas>
+
+<script>
+let game = "";
+const c = document.getElementById("game");
+const ctx = c.getContext("2d");
+
+/* ---------- LEADERBOARD ---------- */
+function getScores(){
+return JSON.parse(localStorage.getItem("scores") || "{}");
+}
+
+function saveScore(game, score){
+let scores = getScores();
+if(!scores[game] || score > scores[game]){
+scores[game] = score;
+localStorage.setItem("scores", JSON.stringify(scores));
+}
+renderBoard();
+}
+
+function renderBoard(){
+let scores = getScores();
+let html = "";
+for(let g in scores){
+html += `<p>${g}: ${scores[g]}</p>`;
+}
+document.getElementById("scores").innerHTML = html || "No scores yet";
+}
+renderBoard();
+
+/* ---------- GAME SWITCH ---------- */
+function setGame(g){
+game = g;
+document.getElementById("panel").innerHTML = "";
+
+if(g === "clicker") clicker();
+if(g === "reaction") reaction();
+if(g === "snake") snakeStart();
+if(g === "mole") moleStart();
+}
+
+/* ---------- CLICKER ---------- */
+let clicks = 0;
+function clicker(){
+c.style.display="none";
+document.getElementById("panel").innerHTML = `
+<h2>Clicks: <span id="cscore">0</span></h2>
+<button onclick="addClick()">CLICK</button>
+`;
+
+clicks = 0;
+}
+
+function addClick(){
+clicks++;
+document.getElementById("cscore").textContent = clicks;
+saveScore("clicker", clicks);
+}
+
+/* ---------- REACTION ---------- */
+function reaction(){
+c.style.display="none";
+document.getElementById("panel").innerHTML = "<h2>Wait for green...</h2>";
+
+setTimeout(()=>{
+let start = Date.now();
+document.getElementById("panel").innerHTML = "<h2 style='color:lime'>CLICK NOW!</h2>";
+
+document.onclick = ()=>{
+if(game !== "reaction") return;
+let time = Date.now() - start;
+alert("Reaction: " + time + "ms");
+saveScore("reaction", Math.max(0, 5000 - time));
+document.onclick = null;
+};
+},2000);
+}
+
+/* ---------- SNAKE ---------- */
+let snake, dir, food;
+
+function snakeStart(){
+c.style.display="block";
+snake=[{x:10,y:10}];
+dir={x:1,y:0};
+food={x:15,y:15};
+}
+
+document.addEventListener("keydown",e=>{
+if(game!=="snake") return;
+if(e.key==="ArrowUp")dir={x:0,y:-1};
+if(e.key==="ArrowDown")dir={x:0,y:1};
+if(e.key==="ArrowLeft")dir={x:-1,y:0};
+if(e.key==="ArrowRight")dir={x:1,y:0};
+});
+
+function snakeLoop(){
+if(game==="snake"){
+ctx.fillStyle="black";
+ctx.fillRect(0,0,400,400);
+
+snake.unshift({x:snake[0].x+dir.x,y:snake[0].y+dir.y});
+
+if(snake[0].x===food.x&&snake[0].y===food.y){
+food={x:Math.random()*20|0,y:Math.random()*20|0};
+}else snake.pop();
+
+ctx.fillStyle="lime";
+snake.forEach(s=>ctx.fillRect(s.x*20,s.y*20,18,18));
+
+ctx.fillStyle="red";
+ctx.fillRect(food.x*20,food.y*20,18,18);
+
+saveScore("snake", snake.length);
+}
+requestAnimationFrame(snakeLoop);
+}
+snakeLoop();
+
+/* ---------- MOLE ---------- */
+let moleScore=0;
+function moleStart(){
+c.style.display="none";
+document.getElementById("panel").innerHTML=`
+<h2>Whack Mole</h2>
+<button onclick="hit()">HIT MOLE</button>
+<h3>Score: <span id="m">0</span></h3>
+`;
+moleScore=0;
+}
+
+function hit(){
+moleScore++;
+document.getElementById("m").textContent=moleScore;
+saveScore("mole", moleScore);
+}
+
+</script>
+
+</body>
+</html>
